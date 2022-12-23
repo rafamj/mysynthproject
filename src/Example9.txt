@@ -1,0 +1,10 @@
+//interface="default"
+interface="hw:1,0"
+AlsaOut asound
+//AlsaOut asound(interface)
+AlsaIn  aIn(interface)
+//AlsaIn  aIn
+
+asound.left=aIn.left 
+asound.right=aIn.right
+

@@ -1,0 +1,11 @@
+AlsaOut asound
+AlsaSeq aseq
+Midi2cv  m2cv
+OscSQ osc
+
+m2cv.in=aseq.out
+asound.left= osc.out
+asound.right = osc.out
+osc.note=m2cv.note 
+osc.pitchbend=0
+

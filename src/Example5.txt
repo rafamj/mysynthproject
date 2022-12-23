@@ -1,0 +1,37 @@
+AlsaOut asound
+AlsaSeq aseq(1)
+Midi2cv  m2cv
+Adsr adsr
+Select  sel({10,11,12,13},{20,21,22,23})
+Glider g
+
+
+def Synth
+  inputs note,cv,pitchbend
+  outputs out
+
+  OscSQ osc
+  Vca vca
+  vca.in=osc.out
+  out=vca.out
+  vca.cv=cv
+  osc.note=note
+  osc.pitchbend=pitchbend
+end
+
+Synth s
+m2cv.in=aseq.out
+sel.in=aseq.out
+asound.left= s.out
+asound.right = s.out
+s.note=g.out
+g.in=m2cv.note 
+s.pitchbend=0
+s.cv= adsr.out 
+adsr.gate=m2cv.gate
+adsr.{a,d,s,r}=sel.control[1]
+g.time=sel.control[0][0]
+sel.control[1]={0,0.5,0.6,0.5}
+sel.control[0][0]=1
+
+

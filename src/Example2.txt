@@ -1,0 +1,60 @@
+AlsaOut asound
+AlsaSeq aseq
+Midi2cv  m2cv[8]
+Poly p(8)
+
+def Synth
+  inputs note,cv,pitchbend
+  outputs out
+
+  OscSQ osc
+  Vca vca
+
+  out=vca.out 
+  vca.cv=cv
+  vca.in=osc.out
+  osc.note=note
+  osc.pitchbend=pitchbend
+end
+
+Synth s[8]
+
+p.in=aseq.out
+
+
+asound.left= (s[0].out + s[1].out + s[2].out + s[3].out + s[4].out + s[5].out + s[6].out + s[7].out ) * 0.1
+asound.right = (s[0].out + s[1].out  + s[2].out + s[3].out + s[4].out + s[5].out + s[6].out + s[7].out ) * 0.1
+
+
+m2cv[0].in=p.out[0]
+s[0].cv=m2cv[0].vol
+s[0].note=m2cv[0].note
+s[0].pitchbend=p.pitchbend
+m2cv[1].in=p.out[1]
+s[1].cv=m2cv[1].vol
+s[1].note=m2cv[1].note
+s[1].pitchbend=p.pitchbend
+m2cv[2].in=p.out[2]
+s[2].cv=m2cv[2].vol
+s[2].note=m2cv[2].note
+s[2].pitchbend=p.pitchbend
+m2cv[3].in=p.out[3]
+s[3].cv=m2cv[3].vol
+s[3].note=m2cv[3].note
+s[3].pitchbend=p.pitchbend
+m2cv[4].in=p.out[4]
+s[4].cv=m2cv[4].vol
+s[4].note=m2cv[4].note
+s[4].pitchbend=p.pitchbend
+m2cv[5].in=p.out[5]
+s[5].cv=m2cv[5].vol
+s[5].note=m2cv[5].note
+s[5].pitchbend=p.pitchbend
+m2cv[6].in=p.out[6]
+s[6].cv=m2cv[6].vol
+s[6].note=m2cv[6].note
+s[6].pitchbend=p.pitchbend
+m2cv[7].in=p.out[7]
+s[7].cv=m2cv[7].vol
+s[7].note=m2cv[7].note
+s[7].pitchbend=p.pitchbend

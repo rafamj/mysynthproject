@@ -1,0 +1,43 @@
+AlsaOut asound
+AlsaSeq aseq
+Midi2cv  m2cv[8]
+Poly p(8)
+Pager pag(2,{10,11,12,13},20,21)
+//SoundMonitor sm
+MidiMonitor mm
+
+
+
+def Synth
+  inputs note,pitchbend,a,d,s,r,gate,cv
+  outputs out
+
+  OscSQ osc
+  Vca vca
+  Adsr adsr
+
+  adsr.{a,d,s,r,gate}={a,d,s,r,gate}
+  out=vca.out
+  vca.cv=adsr.out  * cv
+  vca.in=osc.out
+  osc.note=note
+  osc.pitchbend=pitchbend
+end
+
+Synth s[8]
+
+
+
+p.in=aseq.out
+pag.in =  aseq.out
+
+//sm.in=s[0].out
+mm.in=aseq.out
+asound.left= (s[0].out + s[1].out + s[2].out + s[3].out + s[4].out + s[5].out + s[6].out + s[7].out ) *0.1
+asound.right = asound.left
+
+s[0:7].pitchbend={p.pitchbend} * 8
+m2cv[0:7].in=p.out[0:7]
+s[0:7].{note,cv,gate}=m2cv[0:7].{note,vol,gate}
+s[0:7].{a,d,s,r}={{pag.control[0][0]}*8,{pag.control[0][1]}*8,{pag.control[0][2]}*8,{pag.control[0][3]}*8}
+pag.control[0]={0,0.5,0.5,1}

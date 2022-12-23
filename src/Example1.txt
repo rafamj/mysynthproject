@@ -1,0 +1,38 @@
+AlsaOut asound
+AlsaSeq aseq
+Midi2cv  m2cv
+Adsr adsr
+Pager  pag(2,{10,11,12,13},20,21)
+
+
+def Synth
+  inputs note,cv,pitchbend
+  outputs out
+
+  OscSQ osc
+  Vca vca
+  vca.in=osc.out
+  out=vca.out
+  vca.cv=cv
+  osc.note=note
+  osc.pitchbend=pitchbend
+end
+
+Synth s
+m2cv.in=aseq.out
+pag.in=aseq.out
+asound.left= s.out
+asound.right = s.out
+s.note=m2cv.note 
+s.pitchbend=pag.control[1][0]
+s.cv= adsr.out 
+adsr.gate=m2cv.gate
+adsr.a=pag.control[0][0]
+adsr.d=pag.control[0][1]
+adsr.s=pag.control[0][2]
+adsr.r=pag.control[0][3]
+pag.control[0][0]=1
+pag.control[0][1]=1
+pag.control[0][2]=1
+pag.control[0][3]=1
+
