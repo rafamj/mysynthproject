@@ -1,0 +1,92 @@
+#include <math.h>
+#include <alsa/asoundlib.h>
+#include "alsaSeq.h"
+#include "alsaOut.h"
+#include "alsaIn.h"
+#include "deviceSet.h"
+#include "parser/parser.h"
+
+int CHANNEL= -1; 
+
+  DeviceSet *devices=new DeviceSet;
+  AlsaOut *asound;
+  AlsaIn *aIn;
+  AlsaSeq *aseq;
+
+static int async_loop(AlsaSeq *aseq, AlsaOut *aOut, AlsaIn *aIn){
+    int seq_nfds = 0;
+    int nfdsOut=0;
+    //int nfdsIn=0;
+    
+    if(aseq) {
+      seq_nfds = snd_seq_poll_descriptors_count(aseq->handle, POLLIN);
+    }
+    if(aOut) {
+      nfdsOut=snd_pcm_poll_descriptors_count (aOut->handle);
+    }
+    /*
+    if(aIn) {
+      nfdsIn=snd_pcm_poll_descriptors_count (aIn->handle);
+    }
+    */
+    //struct pollfd *pfds = (struct pollfd *)alloca(sizeof(struct pollfd) * (seq_nfds + nfdsOut + nfdsIn));
+    struct pollfd *pfds = (struct pollfd *)alloca(sizeof(struct pollfd) * (seq_nfds + nfdsOut));
+    if(aseq) {
+    snd_seq_poll_descriptors(aseq->handle, pfds, seq_nfds, POLLIN);
+    }
+    if(aOut) {
+    snd_pcm_poll_descriptors (aOut->handle, pfds+seq_nfds, nfdsOut);
+    }
+    /*
+    if(aIn) {
+    snd_pcm_poll_descriptors (aIn->handle, pfds+seq_nfds+nfdsOut, nfdsIn);
+    }
+    */
+
+    while (1) {
+        //if (poll (pfds, seq_nfds + nfdsOut+nfdsIn, 1000) > 0) {
+        if (poll (pfds, seq_nfds + nfdsOut, 1000) > 0) {
+	    //printf("p1 %d %d %d \n",seq_nfds,nfdsOut,nfdsIn);
+            for (int l1 = 0; l1 < seq_nfds; l1++) {
+               if (pfds[l1].revents > 0) aseq->callback();
+            }
+            for (int l1 = seq_nfds; l1 < seq_nfds + nfdsOut; l1++) {
+                if (pfds[l1].revents > 0) {
+                    aOut->callback(); 
+                }
+            }
+	    /*
+            for (int l1 = seq_nfds  + nfdsOut; l1 < seq_nfds + nfdsOut+nfdsIn; l1++) {
+                if (pfds[l1].revents > 0) {
+                    aIn->callback(); 
+                }
+            }
+	    */
+        }
+    }
+}
+
+void readFile(int argc, char *argv[]) {
+  Parser p;
+
+  if(argc!=2) {
+    printf("Usage: ./monitor <filename>\n");
+  }
+  p.initFile(argv[1]);
+  p.parse("end");
+  printf("End parse\n");
+  p.buildDeviceSet("asound",false); /////////
+  //exit(0);
+  asound=p.asound;
+  aIn=p.aIn;
+  aseq=p.aseq;
+  p.getDevices(devices);
+}
+ 
+
+int main(int argc, char *argv[]) {
+  readFile(argc,argv); 
+  async_loop(aseq,asound,aIn);
+  return 0;
+}
+

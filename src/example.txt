@@ -1,0 +1,11 @@
+//interface="default"
+interface="hw:1,0"
+
+AlsaOut asound(interface)
+OscSQ osc
+
+asound.left= osc.out
+asound.right = osc.out
+osc.note=500 
+osc.pitchbend=0
+
