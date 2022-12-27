@@ -38,6 +38,7 @@
 #include "../switch.h"
 #include "../midiSelect.h"
 #include "../midi2control.h"
+#include "../chch.h"
 #include "wav.h"
 #include  "parser.h"
 
@@ -76,6 +77,7 @@ void Parser::initDevices() {
   table.insert(createDevDef("Delay","","in","out"));
   table.insert(createDevDef("Delay2","","in, del","out"));
   table.insert(createDevDef("Split","i:note","m:in","m:out[2]",false));
+  table.insert(createDevDef("Chch","i:channel","m:in","m:out",false));
   table.insert(createDevDef("Poly","i:n=6","m:in","pitchbend, m:out[n],control[128]"));
   table.insert(createDevDef("Pager","i:pags, i:input[], i:down, i:up","m:in","control[pags][size(input)]",false));
   table.insert(createDevDef("Select","i:c[],i:s[]","m:in","control[size(s)][size(c)]",false));
@@ -183,6 +185,8 @@ Device *Parser::createDev(string typeName, vector<Symbol *> &init) { //init is m
       d=new Midi2cv();
     } else if(typeName.compare("Split")==0) {
       d=new Split(init[0]->value.integer);
+    } else if(typeName.compare("Chch")==0) {
+      d=new Chch(init[0]->value.integer);
     } else if(typeName.compare("OscDiv")==0) {
       d=new OscDiv();
     } else if(typeName.compare("Switch")==0) {

@@ -205,10 +205,11 @@ void Parser::buildDeviceSet(string root, bool defining) { /////////este habra qu
       }
     }
   Symbol *s=table.search(root);
-  if(s) {
+    printf("p1 %d\n",s->type);
+  if(s->type!=Symbol::NEW) { 
     list(s->value.devObj,defining);
-  } else {
-    printError("Device %s not found",root.c_str());
+  } else { //not found
+    //printError("Device %s not found",root.c_str());
   }
 }
 
