@@ -1,11 +1,12 @@
-//interface="default"
-interface="hw:1,0"
+interface="default"
+//interface="hw:1,0"
+AlsaSeq aseq
+Chch ch(10)
+MidiMonitor mm
+Split sp(43)
 
-AlsaOut asound(interface)
-OscSQ osc
-
-asound.left= osc.out
-asound.right = osc.out
-osc.note=500 
-osc.pitchbend=0
-
+mm.in=aseq.out
+sp.in=aseq.out
+ch.in=sp.out[1]
+aseq.out=ch.out
+aseq.in=sp.out[0]

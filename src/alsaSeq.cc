@@ -7,32 +7,14 @@ AlsaSeq::AlsaSeq(int ch, const char *devName):Device(0,0,1,1){ //in out
   open();
 }
 
-void AlsaSeq::open(){
-    if (snd_seq_open(&handle, "default", SND_SEQ_OPEN_DUPLEX, 0) < 0) {
-        fprintf(stderr, "Error opening ALSA sequencer.\n");
-        exit(1);
-    }
-    snd_seq_set_client_name(handle, "miniFMsynth");
-    if ((portIn=snd_seq_create_simple_port(handle, "listen:in",
-        SND_SEQ_PORT_CAP_WRITE|SND_SEQ_PORT_CAP_SUBS_WRITE,
-        SND_SEQ_PORT_TYPE_MIDI_GENERIC)) < 0) {
-        fprintf(stderr, "Error creating sequencer in port.\n");
-        exit(1);
-    }
-    if ((portOut=snd_seq_create_simple_port(handle, "write:out",
-        SND_SEQ_PORT_CAP_READ|SND_SEQ_PORT_CAP_SUBS_READ,
-        SND_SEQ_PORT_TYPE_MIDI_GENERIC)) < 0) {
-        fprintf(stderr, "Error creating sequencer out port.\n");
-        exit(1);
-    }
-   
+void AlsaSeq::connect(int client, int port) {
 //capture keyboard
     snd_seq_addr_t sender, dest;
     snd_seq_port_subscribe_t *subs;
-    sender.client = 20;
-    sender.port = 0;
-    dest.client = 128;
-    dest.port = 0;
+    sender.client = client;
+    sender.port = port;
+    dest.client = snd_seq_client_id(handle);
+    dest.port = portIn;
     snd_seq_port_subscribe_alloca(&subs);
     snd_seq_port_subscribe_set_sender(subs, &sender);
     snd_seq_port_subscribe_set_dest(subs, &dest);
@@ -41,6 +23,30 @@ void AlsaSeq::open(){
     snd_seq_port_subscribe_set_time_real(subs, 1);
     snd_seq_subscribe_port(handle, subs);
 
+}
+
+void AlsaSeq::open(){
+    if (snd_seq_open(&handle, deviceName, SND_SEQ_OPEN_DUPLEX, 0) < 0) {
+        fprintf(stderr, "Error opening ALSA sequencer.\n");
+        exit(1);
+    }
+    snd_seq_set_client_name(handle, "modular");
+      if ((portIn=snd_seq_create_simple_port(handle, "listen:in",
+        SND_SEQ_PORT_CAP_WRITE|SND_SEQ_PORT_CAP_SUBS_WRITE,
+        SND_SEQ_PORT_TYPE_MIDI_GENERIC)) < 0) {
+        fprintf(stderr, "Error creating sequencer in port.\n");
+        exit(1);
+      }
+    if ((portOut=snd_seq_create_simple_port(handle, "write:out",
+        SND_SEQ_PORT_CAP_READ|SND_SEQ_PORT_CAP_SUBS_READ,
+        SND_SEQ_PORT_TYPE_MIDI_GENERIC)) < 0) {
+        fprintf(stderr, "Error creating sequencer out port.\n");
+        exit(1);
+    }
+    printf("in %d out %d\n",portIn,portOut);
+  
+   //capture keyboard
+   connect(20,0);
 }
 
 void AlsaSeq::getMessage(int n, snd_seq_event_t *ev){

@@ -7,6 +7,7 @@ class AlsaSeq: public Device {
   int channel;
   int portIn,portOut;
   bool channelOK(int ch) { return channel==-1 || channel==ch;}
+  void connect(int client, int port);
   void open();
   void close();
   public:

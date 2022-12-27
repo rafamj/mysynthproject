@@ -17,7 +17,7 @@ static int async_loop(AlsaSeq *aseq, AlsaOut *aOut, AlsaIn *aIn){
     int seq_nfds = 0;
     int nfdsOut=0;
     //int nfdsIn=0;
-    
+   printf("async_loop %p %p %p\n",aseq,aOut,aIn); 
     if(aseq) {
       seq_nfds = snd_seq_poll_descriptors_count(aseq->handle, POLLIN);
     }
