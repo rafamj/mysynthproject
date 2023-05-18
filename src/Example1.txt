@@ -2,7 +2,7 @@ AlsaOut asound
 AlsaSeq aseq
 Midi2cv  m2cv
 Adsr adsr
-Pager  pag(2,{10,11,12,13},20,21)
+Pager pag(2,{10,11,12,13},20,21)
 
 
 def Synth
@@ -31,8 +31,8 @@ adsr.a=pag.control[0][0]
 adsr.d=pag.control[0][1]
 adsr.s=pag.control[0][2]
 adsr.r=pag.control[0][3]
-pag.control[0][0]=1
-pag.control[0][1]=1
-pag.control[0][2]=1
-pag.control[0][3]=1
+pag.control[0][0]=$1
+pag.control[0][1]=$1
+pag.control[0][2]=$1
+pag.control[0][3]=$1
 

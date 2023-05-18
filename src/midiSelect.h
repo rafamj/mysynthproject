@@ -3,6 +3,8 @@
 
 
 class MidiSelect: public Device{
+  MidiInput mi[1];
+  MidiOutput mo[1];
   int page;
   unsigned int *in;
   int nInputs;
@@ -10,7 +12,7 @@ class MidiSelect: public Device{
   int nSelect;
   unsigned int *translate;
   public:
-  MidiSelect(unsigned int *inp, int n, unsigned int *select, int ns, unsigned int *trans);
-  void getMessage(int n, snd_seq_event_t *m);
+  MidiSelect(unsigned int *inp, int n, unsigned int *select, int ns, unsigned int *trans, unsigned int ntrans);
+  void getMessage(int n, midi_message_t *m);
   ~MidiSelect();
 };

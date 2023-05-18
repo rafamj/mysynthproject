@@ -1,4 +1,5 @@
 //oscWT.h
+#include <stddef.h> //size_t
 #include "device.h"
 
 class OscWT: public Device {

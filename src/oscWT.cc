@@ -43,7 +43,7 @@ OscWT::OscWT(unsigned char *data, size_t n, int type):Device(3,1){ //note pitchb
   phase=0;
   spc=2048/2;
   nw=n/(spc*2);
-  printf("nw %d max %f min %f\n",nw,max,min);
+  //printf("nw %d max %f min %f\n",nw,max,min);
 } 
 
 void OscWT::cycle() {
@@ -71,11 +71,11 @@ void OscWT::cycle() {
   static int ticks=0;
   if(ticks++==100000 || deltan<0 || deltan>1 || deltaw<0 || deltaw>1) {
     ticks=0;
-    printf("error deltan %f deltaw %f nw %d table %f w %d\n",deltan,deltaw,nw,table,w);
-    printf(" deltan %f phase %d freq %f spc %d rate %d n %d\n",deltan,phase,freq,spc,rate,n);
+    //printf("error deltan %f deltaw %f nw %d table %f w %d\n",deltan,deltaw,nw,table,w);
+    //printf(" deltan %f phase %d freq %f spc %d rate %d n %d\n",deltan,phase,freq,spc,rate,n);
   }
   if(n>=2048) {
-    printf("error n %d phase %d freq %f\n",n,phase,freq);
+    //printf("error n %d phase %d freq %f\n",n,phase,freq);
   }
   sample out1=wav[2*spc*w+nn]*deltan+wav[2*spc*w+n]*(1-deltan);
   sample out2=wav[2*spc*ww+nn]*deltan+wav[2*spc*ww+n]*(1-deltan);

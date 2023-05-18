@@ -6,11 +6,11 @@ Chch::Chch(int ch):Device(0,0,1,1){
 }
 
 
-void Chch::getMessage(int n, snd_seq_event_t *ev){
+void Chch::getMessage(int n, midi_message_t *ev){
         switch (ev->type) {
-            case SND_SEQ_EVENT_NOTEON:
-            case SND_SEQ_EVENT_NOTEOFF:
-	          ev->data.note.channel=channel;
+            case MIDI_MESSAGE_NOTEON:
+            case MIDI_MESSAGE_NOTEOFF:
+	          ev->channel=channel;
 	          callOutput(0,ev);
         }
 

@@ -7,7 +7,7 @@ def Synth
   inputs note,cv,pitchbend
   outputs out
 
-  OscSQ osc
+  OscTri osc
   Vca vca
 
   out=vca.out 
@@ -22,8 +22,8 @@ Synth s[8]
 p.in=aseq.out
 
 
-asound.left= (s[0].out + s[1].out + s[2].out + s[3].out + s[4].out + s[5].out + s[6].out + s[7].out ) * 0.1
-asound.right = (s[0].out + s[1].out  + s[2].out + s[3].out + s[4].out + s[5].out + s[6].out + s[7].out ) * 0.1
+asound.left= (s[0].out + s[1].out + s[2].out + s[3].out + s[4].out + s[5].out + s[6].out + s[7].out )  / 8
+asound.right = asound.left
 
 
 m2cv[0].in=p.out[0]

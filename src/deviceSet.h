@@ -1,7 +1,7 @@
 // deviceSet.h
 #include "device.h"
 
-#define MAX_DEVICE 200
+#define MAX_DEVICE 1000
 
 class DeviceSet {
   Device *alm[MAX_DEVICE];
@@ -16,6 +16,7 @@ class DeviceSet {
   }
   void insert(Device *d) {
     alm[number++]=d;
+//if(number>=MAX_DEVICE) printf("ERROR\n");
   }
   void cycle() {
     for(int i=0;i<number;i++) {

@@ -1,0 +1,30 @@
+interface="default"
+//interface="hw:1,0"
+
+AlsaOut asound(interface)
+AlsaSeq aseq
+OscDiv osc[12]
+SwitchSum sw
+Midi2Control ctrl
+
+sw.note=aseq.out
+
+sw.in=osc.out
+ctrl.in=aseq.out
+asound.left= sw.out 
+asound.right = asound.left
+
+osc[0].note=4186.009 //C8 midi 108 , C1 24
+osc[1].note=4434.922
+osc[2].note=4698.636
+osc[3].note=4978.032
+osc[4].note=5274.041
+osc[5].note=5587.652
+osc[6].note=5919.911
+osc[7].note=6271.927
+osc[8].note=6644.875
+osc[9].note=7040.000
+osc[10].note=7458.620
+osc[11].note=7902.133
+
+

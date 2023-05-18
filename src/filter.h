@@ -2,6 +2,8 @@
 #include "device.h"
 
 class Filter: public Device {
+  sample *si[3];
+  sample so[1];
   sample y1;
   sample y2;
   sample y3;

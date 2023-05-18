@@ -1,21 +1,21 @@
-//interface="default"
-interface="hw:1,0"
+interface="default"
+//interface="hw:1,0"
 
 AlsaOut asound(interface)
 AlsaSeq aseq
 OscDiv osc[12]
 Switch sw
-Delay2 delay
+Delay2 del
 Midi2Control ctrl
 
 sw.note=aseq.out
 
 sw.in=osc.out
 ctrl.in=aseq.out
-delay.in=mean(sw.out) * 15
-asound.left= delay.out
+del.in=mean(sw.out) 
+asound.left= del.out
 asound.right = asound.left
-delay.del=ctrl.control[10]
+del.del=ctrl.control[10]
 
 osc[0].note=4186.009 //C8 midi 108 , C1 24
 osc[1].note=4434.922

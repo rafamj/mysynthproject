@@ -5,5 +5,5 @@ class Split: public Device{
   int note;
   public:
   Split(int n);
-  void getMessage(int n, snd_seq_event_t *m);
+  void getMessage(int n, midi_message_t *m);
 };

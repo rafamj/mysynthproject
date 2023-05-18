@@ -3,7 +3,10 @@
 
 class Midi2cv: public Device{
   int notes;
+  sample so[3];
+  MidiInput mi[1];
+  sample frequencies[128];
   public:
   Midi2cv();
-  void getMessage(int n, snd_seq_event_t *m);
+  void getMessage(int n, midi_message_t *m);
 };
