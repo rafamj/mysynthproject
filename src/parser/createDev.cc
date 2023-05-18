@@ -11,9 +11,9 @@
 #include "../oscSaw.h"
 #include "../oscTri.h"
 #include "../oscWT.h"
-#include "../alsaOut.h"
-#include "../alsaIn.h"
-#include "../alsaSeq.h"
+#include "../alsa/alsaOut.h"
+#include "../alsa/alsaIn.h"
+#include "../alsa/alsaSeq.h"
 #include "../delay.h"
 #include "../delay2.h"
 #include "../mult.h"
@@ -33,18 +33,21 @@
 #include "../constant.h"
 #include "../soundMonitor.h"
 #include "../midiMonitor.h"
-#include "../glide.h"
+#include "../glider.h"
 #include "../oscDiv.h"
 #include "../switch.h"
+#include "../switchSum.h"
 #include "../midiSelect.h"
 #include "../midi2control.h"
 #include "../chch.h"
+#include "../mean.h"
 #include "wav.h"
 #include  "parser.h"
 
 using namespace std;
 
 Symbol *Parser::createDevDef(string n, string init, string input, string output, bool d, string body, int nLine) {
+  //printf("createDevDef %s\n",n.c_str());
   return new Symbol(n,new DevDef(n,init,input,output,d,body,nLine));
 }
 
@@ -61,9 +64,9 @@ void Parser::initDevices() {
   table.insert(createDevDef("OscWT","s:filename","note, pitchbend, table","out"));
   table.insert(createDevDef("Vca","","in,cv","out"));
   table.insert(createDevDef("Mult","","in[2]","out"));
-  table.insert(createDevDef("Mult_1","v","in","out"));
+  table.insert(createDevDef("Mult1","v","in","out"));
   table.insert(createDevDef("Div","","in[2]","out"));
-  table.insert(createDevDef("Div_1","v","in","out"));
+  table.insert(createDevDef("Div1","v","in","out"));
   table.insert(createDevDef("Atan","","in","out"));
   table.insert(createDevDef("Sum","","in[2]","out"));
   table.insert(createDevDef("Sum_1","v","in","out"));
@@ -78,16 +81,18 @@ void Parser::initDevices() {
   table.insert(createDevDef("Delay2","","in, del","out"));
   table.insert(createDevDef("Split","i:note","m:in","m:out[2]",false));
   table.insert(createDevDef("Chch","i:channel","m:in","m:out",false));
-  table.insert(createDevDef("Poly","i:n=6","m:in","pitchbend, m:out[n],control[128]"));
+  table.insert(createDevDef("Poly","i:n=6","m:in","pitchbend, m:out[n],control[128]",false));
   table.insert(createDevDef("Pager","i:pags, i:input[], i:down, i:up","m:in","control[pags][size(input)]",false));
   table.insert(createDevDef("Select","i:c[],i:s[]","m:in","control[size(s)][size(c)]",false));
   table.insert(createDevDef("Adsr","","gate,a,d,s,r","out"));
   table.insert(createDevDef("OscDiv","","note","out[8]"));
   table.insert(createDevDef("Switch","","in[12][8], m:note","out[128]"));
+  table.insert(createDevDef("SwitchSum","","in[12][8], m:note","out"));
   table.insert(createDevDef("SoundMonitor","","in",""));
   table.insert(createDevDef("MidiMonitor","","m:in","",false));
   table.insert(createDevDef("MidiSelect","i:c[],i:s[],i:tr[][]","m:in","m:out",false));
   table.insert(createDevDef("Midi2Control","","m:in","control[128]",false));
+  table.insert(createDevDef("Mean","i:n","v[n]","out"));
 }
 
 
@@ -115,6 +120,8 @@ vector<unsigned int> Parser::readIntArray(Symbol *s) {
   return r;
 }
 
+#define VALUE(x) x->type==Symbol::REAL?x->value.real:x->value.integer
+
 Device *Parser::createDev(string typeName, vector<Symbol *> &init) { //init is modified
   Device *d=0;
     if(typeName.compare("OscSQ")==0) {
@@ -135,12 +142,12 @@ Device *Parser::createDev(string typeName, vector<Symbol *> &init) { //init is m
       d=new Vca();
     } else if(typeName.compare("Mult")==0) {
       d=new Mult();
-    } else if(typeName.compare("Mult_1")==0) {
-      d=new Mult1(init[0]->value.real);
+    } else if(typeName.compare("Mult1")==0) {
+      d=new Mult1(VALUE(init[0]));
     } else if(typeName.compare("Div")==0) {
       d=new Div();
-    } else if(typeName.compare("Div_1")==0) {
-        d=new Div1(init[0]->value.real);
+    } else if(typeName.compare("Div1")==0) {
+        d=new Div1(VALUE(init[0]));
     } else if(typeName.compare("Atan")==0) {
       d=new Atan();
     } else if(typeName.compare("Pan")==0) {
@@ -148,23 +155,27 @@ Device *Parser::createDev(string typeName, vector<Symbol *> &init) { //init is m
     } else if(typeName.compare("Sum")==0) {
       d=new Sum();
     } else if(typeName.compare("Sum_1")==0) {
-      d=new Sum1(init[0]->value.real);
+      d=new Sum_1(VALUE(init[0]));
     } else if(typeName.compare("Sub")==0) {
       d=new Sub();
     } else if(typeName.compare("Sub_1")==0) {
-      d=new Sub1(init[0]->value.real);
+      d=new Sub_1(VALUE(init[0]));
     } else if(typeName.compare("Rand")==0) {
       d=new Rand();
     } else if(typeName.compare("Glider")==0) {
-      d=new Glide();
+      d=new Glider();
     } else if(typeName.compare("Delay")==0) {
       d=new Delay();
     } else if(typeName.compare("Delay2")==0) {
       d=new Delay2();
     } else if(typeName.compare("Pager")==0) {
-      d=new Pager(init[0]->value.integer,&readIntArray(init[1])[0],init[1]->value.array->alm.size(),init[2]->value.integer,init[3]->value.integer);
+      unsigned int *in=new unsigned int[init[1]->value.array->alm.size()];
+      for(size_t i=0;i<init[1]->value.array->alm.size();i++) in[i]=init[1]->value.array->alm[i]->value.integer;
+      sample **sia=new sample*[init[1]->value.array->alm.size()];
+      sample *soa=new sample[init[1]->value.array->alm.size()*init[0]->value.integer];
+      d=new Pager(sia,soa,init[0]->value.integer,in,init[1]->value.array->alm.size(),init[2]->value.integer,init[3]->value.integer);
     } else if(typeName.compare("Select")==0) {
-        d=new Select(&readIntArray(init[0])[0],init[0]->value.array->alm.size(),&readIntArray(init[1])[0],init[1]->value.array->alm.size());
+        d=new Select(new sample[init[0]->value.array->alm.size()*init[1]->value.array->alm.size()],&readIntArray(init[0])[0],init[0]->value.array->alm.size(),&readIntArray(init[1])[0],init[1]->value.array->alm.size());
     } else if(typeName.compare("Adsr")==0) {
       d=new Adsr();
     } else if(typeName.compare("Filter")==0) {
@@ -180,7 +191,7 @@ Device *Parser::createDev(string typeName, vector<Symbol *> &init) { //init is m
         d=new AlsaSeq(init[0]->value.integer,init[1]->value.str->c_str());
       } else printError("Wrong channel number");
     } else if(typeName.compare("Constant")==0) {
-      d=new Constant(init[0]->value.real);
+      d=new Constant(VALUE(init[0]));
     } else if(typeName.compare("Midi2cv")==0) {
       d=new Midi2cv();
     } else if(typeName.compare("Split")==0) {
@@ -191,16 +202,25 @@ Device *Parser::createDev(string typeName, vector<Symbol *> &init) { //init is m
       d=new OscDiv();
     } else if(typeName.compare("Switch")==0) {
       d=new Switch();
+    } else if(typeName.compare("SwitchSum")==0) {
+      d=new SwitchSum();
     } else if(typeName.compare("Poly")==0) {
-      d=new Poly(init[0]->value.integer);
+      bool *na=new bool[init[0]->value.integer];
+      unsigned int *notes=new unsigned int[init[0]->value.integer];
+      d=new Poly(init[0]->value.integer,na,notes);
     } else if(typeName.compare("SoundMonitor")==0) {
       d=new SoundMonitor();
     } else if(typeName.compare("MidiMonitor")==0) {
       d=new MidiMonitor();
     } else if(typeName.compare("MidiSelect")==0) {
-      d=new MidiSelect(&readIntArray(init[0])[0],init[0]->value.array->alm.size(),&readIntArray(init[1])[0],init[1]->value.array->alm.size(),&readIntArray(init[2])[0]);
+      d=new MidiSelect(&readIntArray(init[0])[0],init[0]->value.array->alm.size(),&readIntArray(init[1])[0],init[1]->value.array->alm.size(),&readIntArray(init[2])[0],init[2]->value.array->alm.size());
     } else if(typeName.compare("Midi2Control")==0) {
       d=new Midi2Control();
+    } else if(typeName.compare("Mean")==0) {
+      //printf("Mean %d",init[0]->value.integer);
+      int n=init[0]->value.integer;
+      sample **si=new sample*[n];
+      d=new Mean(si,n);
     } else {
       printError("Unknown device");
     }

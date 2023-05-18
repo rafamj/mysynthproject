@@ -5,8 +5,126 @@
 #include "parser.h"
 
 
+void Printer::printProgram() {
+  if(writeCode){
+    if(writeCode==2) {
+      print("#include <Synth.h>\n\n");
+    } else if(writeCode==3) {
+      print("#include \"synth.h\"\n\n");
+    }
+    print("int counter;\n");
+    print(defStr.c_str());
+    print("\nvoid connectDevices() {\n");
+    print(connectStr.c_str());
+    print("}\n\nvoid cycle() {\n");
+    print(cycleStr.c_str());
+    print("}\n");
+    print("\nvoid setup() {\n  counter=0;\n  " + midi + ".open();\n  " + soundOut + ".open();\n  connectDevices();\n}\n\n");
+    if(writeCode==2) {
+      print("\nvoid loop() {\n  //if(counter++==1) {\n    " + midi + ".callback();\n    //counter=0;\n  //}\n  " + soundOut + ".callback(cycle);\n}\n");
+    } else if(writeCode==3) {
+      print("\nextern int async_loop(AlsaSeq *aseq, AlsaOut *aOut, AlsaIn *aIn, void (*cycle)());\n");
+      print("\nint main() {\n  setup();\n  async_loop(&" + midi + ",&" + soundOut + ",0,cycle);\n}\n");
+    }
+  }
+}
+
+void Printer::printConnect(bool isMidi, string left, int ln, string right, int rn) {
+  if(writeCode) {
+    connectStr += "  "  + left + ".connect";
+    if(isMidi) {
+      connectStr += "M";
+      //printf("%s.connectM(%d,%s,%d);\n",left.c_str(),ln,right.c_str(),rn);
+    } else {
+      //printf("%s.connect(%d,%s,%d);\n",left.c_str(),ln,right.c_str(),rn);
+    }
+    connectStr += "("  + to_string(ln) + ",&"  + right + "," + to_string(rn) + ");\n";
+  }
+}
+
+string Printer::printDimensions(Symbol *s) {
+  if (s->type != Symbol::ARRAY) {
+    return "";
+  } else {
+    return "[" + to_string(s->value.array->alm.size()) + "]" + printDimensions(s->value.array->alm[0]) ;
+  }
+}
+
+void Printer::printDef(string typeName, string name, vector<int> dimensions, vector<Symbol *> init) {
+      if(getWriteCode()) {
+        int auxn=0;
+        string tn=typeName;
+	string res;
+	string aux;
+	if(writeCode==2) {
+	  if(tn.compare("AlsaOut")==0) {tn="SAMD21Out";soundOut=name;init.clear();}
+	  if(tn.compare("AlsaIn")==0) {tn="SAMD21Out";soundIn=name;}
+	  if(tn.compare("AlsaSeq")==0) {tn="SAMD21Midi";midi=name;}
+	} else if(writeCode==3) {
+	  if(tn.compare("AlsaOut")==0) {tn="AlsaOut";soundOut=name;}
+	  if(tn.compare("AlsaIn")==0) {tn="AlsaIn";soundIn=name;}
+	  if(tn.compare("AlsaSeq")==0) {tn="AlsaSeq";midi=name;}
+	}
+        res += tn + " " +name;
+	if(tn.compare("Select")==0) {
+	  string auxName= name+ "_aux_" + to_string(auxn++);
+	  aux += "sample " + auxName + "[" + to_string(init[0]->value.array->alm.size()*init[1]->value.array->alm.size()) + "];\n";
+	  init.insert(init.begin(),new Symbol(auxName,&auxName));
+	} else if(tn.compare("Pager")==0) {
+	  string auxName1= name+ "_aux_" + to_string(auxn++);
+	  aux += "sample " + auxName1 + "[" + to_string(init[1]->value.array->alm.size()*init[0]->value.integer) + "];\n";
+	  string auxName2= name+ "_aux_" + to_string(auxn++);
+	  aux += "sample *" + auxName2 + "[" + to_string(init[1]->value.array->alm.size()) + "];\n";
+	  init.insert(init.begin(),new Symbol(auxName1,&auxName1));
+	  init.insert(init.begin(),new Symbol(auxName2,&auxName2));
+	} else if(tn.compare("Poly")==0) {
+	  string auxName1= name+ "_aux_" + to_string(auxn++);
+	  aux += "bool " + auxName1 + "[" + to_string(init[0]->value.integer) + "];\n";
+	  string auxName2= name+ "_aux_" + to_string(auxn++);
+	  aux += "unsigned int " + auxName2 + "[" + to_string(init[0]->value.integer) + "];\n";
+	  init.push_back(new Symbol(auxName1,&auxName1));
+	  init.push_back(new Symbol(auxName2,&auxName2));
+	} else if(tn.compare("Mean")==0) {
+	  string auxName= name+ "_aux_" + to_string(auxn++);
+	  aux += "sample *" + auxName + "[" + to_string(init[0]->value.integer) + "];\n";
+	  init.insert(init.begin(),new Symbol(auxName,&auxName));
+	}
+        for(size_t i=0;i<dimensions.size();i++) {
+          res += "[" + to_string(dimensions[i]) + "]";
+        }
+	if(init.size()>0) {
+	  if(getWriteCode()>1) res += "(";
+	  if (initStr.length()==0) {
+	    initStr += name + "(";
+	  } else {
+	    initStr += "," + name + "(";
+	  }
+	  for(size_t i=0;i<init.size();i++) {
+	    if(i>0) {
+	      if(getWriteCode()>1) res += ",";
+	      initStr += ",";
+	    }
+	    if(init[i]->type==Symbol::ARRAY) {
+	      string auxName= name+ "_aux_" + to_string(auxn++);
+	      aux += "unsigned int " + auxName + printDimensions(init[i]) + "=" + init[i]->symbol2string() + ";\n";
+	      if(getWriteCode()>1) res += auxName + "," + to_string(init[i]->value.array->alm.size());
+	      initStr  += auxName + "," + to_string(init[i]->value.array->alm.size());
+	    } else {
+	      if(getWriteCode()>1) res +=init[i]->symbol2string();
+	      initStr  += init[i]->symbol2string();
+	    }
+	  }
+	  if(getWriteCode()>1) res +=")";
+	  initStr +=")";
+	}
+        res +=";\n";
+	printDef(aux);
+	printDef(res);
+      }
+}
+
 static bool isSpecial(char c) {
-  return string("=().[],+-*/{}:;<\"'").find(c)!=string::npos;
+  return string("=().[],+-*/{}:;<\"'$").find(c)!=string::npos;
 }
 
 static bool isSpace(char c) {
@@ -26,6 +144,7 @@ static string type2string(Type t) {
     default: return "UNKNOWN";
   }
 }
+
 /*
 static string symbolType2string(Symbol::Type t) {
   switch(t) {
@@ -48,19 +167,14 @@ void Token::print() {
   printf("token %s %s\n",name.c_str(),type2string(type).c_str());
 }
 
-static string generateName(string s) {
-  struct Name {
-    string name;
-    int n;
-    Name(string na):name(na),n(0){}
-  };
-  static vector <Name> name;
-  for(size_t i=0;i<name.size();i++) {
-    if(name[i].name.compare(s)==0) {
-      return string(name[i].name + to_string(name[i].n++));
+string Parser::generateName(string s) {
+  for(size_t i=0;i<nameTable.size();i++) {
+    if(nameTable[i]->name.compare(s)==0) {
+      string n=nameTable[i]->name + to_string(nameTable[i]->n);
+      return string(nameTable[i]->name + "_" + to_string(nameTable[i]->n++));
     }
   }
-  name.push_back(Name(s));
+  nameTable.push_back(new Name(s));
   return generateName(s);
 }
 
@@ -68,6 +182,7 @@ Parser::Parser(){
   textIndex=0;
   nLine=0;
   nextT=0;
+  nextToken(); //call the first time to init nextT (lookahead)
   saveText=false;
   set= new DevObjSet();
   aIn=0;
@@ -147,7 +262,8 @@ string generateArrayName(string name, int index) {
 }
 
 
-void Parser::parse(string end) {
+void Parser::parse(string end,int writeCode) {
+  pr.setWriteCode(writeCode);
   Token *t=lookAhead();
   while(t->type!=END && t->type!=UNKNOWN) {
     if(t->type==IDENTIFIER) {
@@ -205,7 +321,6 @@ void Parser::buildDeviceSet(string root, bool defining) { /////////este habra qu
       }
     }
   Symbol *s=table.search(root);
-    printf("p1 %d\n",s->type);
   if(s->type!=Symbol::NEW) { 
     list(s->value.devObj,defining);
   } else { //not found
@@ -267,6 +382,12 @@ void Parser::readDef() {
   p2=textIndex;
   string body=text.substr(p1,p2-p1);
   Symbol *sd=createDevDef(name,init,inputs,outputs,true,body,nl);
+  if(pr.getWriteCode()) {
+    vector<Symbol *> v;
+    //printf("antes createDev %d %s\n",pr.getWriteCode(),name.c_str());
+    createDev("0", sd->value.devDef,v);  //parse devdef
+    //printf("despues createDev %d\n",pr.getWriteCode());
+  }
   //Symbol *sd=new Symbol(name,new Devdef(name, init,inputs,outputs,true,body,nl));
  // for(size_t i=0;i<sd->value.devDef->inputs.size();i++) {
  // }
@@ -299,13 +420,13 @@ void Parser::list(DevObj *devObj,bool defining) {
     }
   }
   if(!set->contains(devObj) && devObj->dynamic) {
-    set->insert(devObj);
+      pr.printCycle("  " + devObj->name + ".cycle();\n");
+      set->insert(devObj);
   }
 }
 
 static int arraySize(vector<Symbol *> a) {
   int w=0;
-
   for(size_t i=0; i<a.size(); i++) {
     if(a[i]->type==Symbol::ARRAY) {
       w+=arraySize(a[i]->value.array->alm);
@@ -372,7 +493,6 @@ DevObj *Parser::createDev(string name, DevDef* def,vector<Symbol *> init) { //us
   Parser p;
   p.table.init();
   p.initDevices();
-
   DevObj *o=new DevObj;
   initParameters(def,o,init);
   p.initString(def->body);
@@ -397,8 +517,26 @@ DevObj *Parser::createDev(string name, DevDef* def,vector<Symbol *> init) { //us
   }
   p.text=def->body;
   p.nLine=def->nLine;
-  p.parse("end");
-  
+  //printf("antes %d\n",pr.getWriteCode());
+  if(name.compare("0")==0) { //definition
+    pr.printDef("struct " + def->name +" {\n");
+    //int w=pr.getWriteCode();
+    p.parse("end",1);
+    //pr.setWriteCode(w);
+  } else {
+    p.parse("end",pr.getWriteCode());
+  }
+  if(name.compare("0")==0) {
+    pr.printDef(p.pr.getDefStr());
+    pr.printDef(def->name + "()");
+    if(p.pr.getInitStr().length()>0) {
+      pr.printDef(def->name + ":" + p.pr.getInitStr());
+    }
+    pr.printDef("{\n" + p.pr.getConnectStr() + "}\n");
+    pr.printDef("};\n");
+    return 0;
+  }
+  //printf("despues %d\n",pr.getWriteCode());
     o->name=name;
     o->visited=false;
     o->dynamic=def->dynamic;
@@ -467,6 +605,8 @@ Symbol *Parser::createConstant(sample value) {
    vector<Symbol *> init(1); //empty vector
    init[0]=new Symbol(generateName("const"),value);
    Symbol *c=create("Constant",init[0]->name,init);
+   vector<int> dim;
+   pr.printDef("Constant",init[0]->name,dim,init);
    return c;
 }
 
@@ -509,8 +649,9 @@ vector<Symbol *> paramDefs = it;
     vector<Symbol *> inp=p.readDeclaration("I/O");
   p.initString(def->outputs);
   vector<Symbol *> outp=p.readDeclaration("I/O");
-  vector<Symbol *> inputs=filterSymbols(inp,Symbol::REAL);
-  vector<Symbol *> outputs=filterSymbols(outp,Symbol::REAL);
+  Symbol::Type type=SAMPLE_T==0?Symbol::REAL:Symbol::INTEGER;
+  vector<Symbol *> inputs=filterSymbols(inp,type);
+  vector<Symbol *> outputs=filterSymbols(outp,type);
   vector<Symbol *> minputs=filterSymbols(inp,Symbol::MIDI);
   vector<Symbol *> moutputs=filterSymbols(outp,Symbol::MIDI);
   copyIO(inputs,obj->inputs);
@@ -575,8 +716,8 @@ Symbol *Parser::create(string typeName, string name, vector<Symbol *> init) {
   if(s && s->type==Symbol::DEVDEF) {
       DevObj *o=new DevObj;
     if(s->value.devDef->body.length()==0) { //predefined Dev
-      o->name=name;
-      o->visited=false;
+     o->name=name;
+     o->visited=false;
      o->dynamic=s->value.devDef->dynamic;
      o->className=s->value.devDef->name;
      initParameters(s->value.devDef,o,init);
@@ -591,7 +732,10 @@ Symbol *Parser::create(string typeName, string name, vector<Symbol *> init) {
       completeFieldData(o->minputs,0);
       completeFieldData(o->moutputs,0);
     } else { //user defined dev
-      o=createDev(name, s->value.devDef,init); //habria que  añadr init
+      //int w=pr.getWriteCode();
+      //pr.setWriteCode(2);
+      o=createDev(name, s->value.devDef,init); 
+      //pr.setWriteCode(w);
     }
     if(typeName.compare("AlsaOut")==0) {
       asound=(AlsaOut*)o->dev;
@@ -606,7 +750,7 @@ Symbol *Parser::create(string typeName, string name, vector<Symbol *> init) {
     }
     return new Symbol(name,o);
   } else {
-    //table.print();
+    table.print();
     printError("%s definition not found2",typeName.c_str());
   }
   return 0;
@@ -615,6 +759,7 @@ Symbol *Parser::create(string typeName, string name, vector<Symbol *> init) {
 
 static int findInVector(vector<Symbol *> v, string s) {
   for(size_t i=0;i<v.size();i++) {
+    //printf(":: %s %s\n",s.c_str(),v[i]->name.c_str());
     if(s.compare(v[i]->name)==0) return i;
   }
   return -1;
@@ -653,6 +798,7 @@ int Parser::readSlice(int &begin, int &end) {
 }
 
 static Symbol *findIO(DevObj *devObj,string name){
+          //printf("findIO %s en %s\n",name.c_str(),devObj->name.c_str());
 	  int ni,no,nmi,nmo;
 	  ni=findInVector(devObj->inputs,name);
 	  if(ni!=-1) {
@@ -798,7 +944,10 @@ Symbol *Parser::readExpression() {
 Symbol *Parser::createOperation1(string op,Symbol *a, Symbol *b) { //operate with a constant
   vector<Symbol *> init; //empty vector
   init.push_back(b);
-  Symbol *m=create(op,generateName(op),init);
+  string name=generateName(op);
+  Symbol *m=create(op,name,init);
+  vector<int> dim;
+  pr.printDef(op,name,dim,init);
   table.insert(m);
   Symbol *in;
              in=m->value.devObj->inputs[0];
@@ -808,7 +957,10 @@ Symbol *Parser::createOperation1(string op,Symbol *a, Symbol *b) { //operate wit
 
 Symbol *Parser::createOperation(string op,Symbol *a, Symbol *b) {
   vector<Symbol *> init; //empty vector
-  Symbol *m=create(op,generateName(op),init);
+  string name=generateName(op);
+  Symbol *m=create(op,name,init);
+  vector<int> dim;
+  pr.printDef(op,name,dim,init);
   table.insert(m);
   Symbol *in0,*in1;
              in0=m->value.devObj->inputs[0]->value.array->alm[0];
@@ -878,6 +1030,7 @@ Symbol *Parser::readSum() { //product + [product]*
 }
 
 Symbol *Parser::multiply(Symbol *a, Symbol *b) {
+    //printf("multiply ");a->print();b->print();
     if(!a->isInputOrField()&& b->isInputOrField()) {
       return multiply(b,a);
     } else if(a->is(Symbol::INTEGER) && b->is(Symbol::INTEGER)) {
@@ -889,13 +1042,19 @@ Symbol *Parser::multiply(Symbol *a, Symbol *b) {
    } else if(a->is(Symbol::REAL) && b->is(Symbol::INTEGER)) {
        return multiply(b,a);
     } else if(a->isInputOrField() && (b->is(Symbol::REAL) || b->is(Symbol::INTEGER))) {
-      return createOperation1("Mult_1",a,b);
+      return createOperation1("Mult1",a,b);
     } else if(a->isInputOrField() && b->isInputOrField()) {
       return createOperation("Mult",a,b);
     } else if(a->is(Symbol::ARRAY) && b->is(Symbol::INTEGER)) {
       Array *r=new Array(a->value.array->alm.size()*b->value.integer);
       for(size_t i=0;i<a->value.array->alm.size()*b->value.integer;i++) {
         r->alm[i]=a->value.array->alm[i%a->value.array->alm.size()*b->value.integer];
+      }
+      return new Symbol(generateName("array"),r);
+    } else if(a->is(Symbol::ARRAY) && b->is(Symbol::ARRAY) && a->value.array->alm.size()==b->value.array->alm.size()) {
+      Array *r=new Array(a->value.array->alm.size());
+      for(size_t i=0;i<a->value.array->alm.size();i++) {
+        r->alm[i]=multiply(a->value.array->alm[i],b->value.array->alm[i]);
       }
       return new Symbol(generateName("array"),r);
     } else {
@@ -919,7 +1078,7 @@ Symbol *Parser::divide(Symbol *a, Symbol *b) {
       a->value.real/=b->value.integer;
     }
     if(a->type==Symbol::FIELD && (b->type==Symbol::REAL||b->type==Symbol::INTEGER)) {
-      return createOperation1("Div_1",a,b);
+      return createOperation1("Div1",a,b);
     } 
     if(a->type==Symbol::FIELD && b->type==Symbol::FIELD) {
       return createOperation("Div",a,b);
@@ -962,9 +1121,9 @@ vector<Symbol *> Parser::readCommaSeparatedExp(char end, bool readVars, bool adm
 	    printError("Identifier expected");
 	  }
 	} else {  
-            a.push_back(readExpression());
-	  }
-	}
+              a.push_back(readExpression());
+        }
+    }
     t=nextToken();
     if(!t->is(end) && !t->is(',')) {
       char buffer[2]={end,0};
@@ -981,17 +1140,46 @@ Symbol *Parser::readArray(bool readVars) {
 }
 
 Symbol *Parser::mean(Symbol *a) {
+
+   vector<Symbol *> init;
+   init.push_back(new Symbol(generateName("tmp"),(int)a->value.array->alm.size())); 
+   Symbol *m=create("Mean",generateName("mean"),init);
+   table.insert(m);
+   //m->print();
+   for(size_t i=0;i<a->value.array->alm.size();i++) {
+     //printf("%ld\n",i);
+     assign(m->value.devObj->inputs[0]->value.array->alm[i],a->value.array->alm[i]);
+   }
+   vector<int> dim;
+   pr.printDef("Mean",m->name,dim,init);
+   return m;
+ 
+/*
   if(a->type!=Symbol::ARRAY) {
     return a;
   }
   size_t size=a->value.array->alm.size();
   if(size==0) return a;
+*/
+
+ /* 
   Symbol *r=new Symbol(a->value.array->alm[0]);
   for(size_t i=1;i<size;i++) {
     r=sum(r,a->value.array->alm[i]);
   }
   r=divide(r,new Symbol("tmp",(int)size));
+  */
+/*  
+  Symbol *r=new Symbol(generateName("tmp"),0);
+  Symbol *d=new Symbol(generateName("tmp"),(int)size);
+  for(size_t i=0;i<size;i++) {
+    Symbol *s=divide(a->value.array->alm[i],d);
+    r=sum(r,s);
+  }
+
+
   return r;
+  */
 }
 
 static Symbol *size(Symbol *a) {
@@ -1022,10 +1210,14 @@ Symbol *Parser::readValue() {
     return new Symbol(Symbol::STRING,generateName("string"),&t->name);
   } else if(t->type==NUMBER) {
       if(t->name.find(".")!=string::npos) {
-        return new Symbol(generateName("real"),(sample)stod(t->name.c_str()));
+        return new Symbol(generateName("real"),stod(t->name.c_str()));
       } else {
         return new Symbol(generateName("int"),atoi(t->name.c_str()));
       }
+  } else if(t->is('$')) {
+    Symbol *v=readValue();
+    v->asControl();
+    return v;
   } else if(t->is('(')) {
     Symbol *s=readExpression();
     expect(')');
@@ -1106,7 +1298,10 @@ vector<Symbol *> Parser::readDeclaration(string type){ //comma separated
 	}
         t=lookAhead();
       }
+
       s=create(typeName,name,dimensions,init);
+      //printf("read declaration %s %s %s\n",typeName.c_str(),name.c_str(),pr.getWriteCode()?"true":"false");
+      pr.printDef(typeName,name,dimensions,init);
       //printf("%s %s\n",typeName.c_str(),name.c_str());
       //s->print();
       r.push_back(s);
@@ -1145,29 +1340,42 @@ static string printTypes(Symbol::Type a, Symbol::Type b) {
 */
 void Parser::assign(Symbol *left, Symbol *right) {
       //printf("assign %p %p\n",left,right);
-      //printf("assign: ");left->print();right->print();printf("\n\n");
+      //printf("assign: %s %s\n",left->name.c_str(), right->name.c_str());
+     /* 
+      printf("assign:\n");
+      if(left) left->print();
+      if(right) right->print();
+      printf("\n\n");
+      */
       if(left->type==Symbol::FIELD) {
         Field *leftField=left->value.field;
         if(right->type==Symbol::FIELD){ ///// real o midi??
 	  Field *rightField=right->value.field;
-          if(leftField->f->type==Symbol::REAL && rightField->f->type==Symbol::REAL) {
+	  //printf("%s.%s= %s.%s\n",leftField->devObj->name.c_str(),left->name.c_str(),rightField->devObj->name.c_str(),right->name.c_str());
+          //if(leftField->f->type==Symbol::REAL && rightField->f->type==Symbol::REAL) {
+          if(leftField->f->isNumber() && rightField->f->isNumber() ) {
             if(rightField->io==1) {//assign input=output
 	      Device *leftDev=leftField->devObj->dev;
 	      Device *rightDev=rightField->devObj->dev;
               leftDev->connect(leftField->n,rightDev,rightField->n);
 	      leftField->devObj->connections[leftField->n]=rightField->devObj; //vemos que esta conectado a ese device (para list)
+	      pr.printConnect(false,leftField->devObj->name,leftField->n,rightField->devObj->name,rightField->n);
 	      //printf("connect %s %d %s %d\n",leftField->devObj->name.c_str(),leftField->n,rightField->devObj->name.c_str(),rightField->n);
 	    } else {  //input=input  left is made to point to the same device than right
 	      Device *leftDev=leftField->devObj->dev;
 	      Device *rightDev=rightField->devObj->dev;
 	      leftDev->inputs[leftField->n]=rightDev->inputs[rightField->n];
 	      leftField->devObj->connections[leftField->n]=rightField->devObj->connections[rightField->n];
+	      pr.printConnect(leftField->devObj->name + ".inputs[" + to_string(leftField->n) + "]=" + rightField->devObj->name + ".inputs[" + to_string(rightField->n) + "];\n");
 	    }
 	  }  else if (leftField->f->type==Symbol::MIDI && rightField->f->type==Symbol::MIDI) {
             if(rightField->io==1) {//assign input=output
 	      Device *leftDev=leftField->devObj->dev;
 	      Device *rightDev=rightField->devObj->dev;
-	      rightDev->connectM(leftField->n,leftDev,rightField->n);
+	      //rightDev->connectM(leftField->n,leftDev,rightField->n);
+	      //printConnect(true,leftField->devObj->name,leftField->n,rightField->devObj->name,rightField->n);
+	      leftDev->connectM(leftField->n,rightDev,rightField->n);
+	      pr.printConnect(true,leftField->devObj->name,leftField->n,rightField->devObj->name,rightField->n);
 	    } else {
 	      //printf("assign: ");left->print();right->print();printf("\n\n");
 	      printError("solo se puede conectar input a output");
@@ -1180,7 +1388,9 @@ void Parser::assign(Symbol *left, Symbol *right) {
         } else if(right->type==Symbol::REAL){
           if(leftField->io==1) { // output = const
 	    Device *leftDev=leftField->devObj->dev;
-	    leftDev->setOutput(leftField->n,right->value.real);
+	    sample v=right->value.real;
+	    leftDev->setOutput(leftField->n,v);
+	    pr.printConnect(leftField->devObj->name + ".setOutput(" + to_string(leftField->n) + "," + to_string(right->value.real) + ");\n");
 	  } else  { 
 	    assign(left,createConstant(right->value.real)->value.devObj->outputs[0]);
 	  }
@@ -1188,6 +1398,7 @@ void Parser::assign(Symbol *left, Symbol *right) {
           if(leftField->io==1) { // output = const
 	    Device *leftDev=leftField->devObj->dev;
 	    leftDev->setOutput(leftField->n,right->value.integer);
+	    pr.printConnect(leftField->devObj->name + ".setOutput(" + to_string(leftField->n) + "," + to_string(right->value.integer) + ");\n");
 	  } else  {
 	    assign(left,createConstant(right->value.integer)->value.devObj->outputs[0]);
 	  }
@@ -1197,6 +1408,9 @@ void Parser::assign(Symbol *left, Symbol *right) {
 	  //left->name=right->name;
 	  //right=left;
 	  //table.insert(right);
+        } else if(right->type==Symbol::DEVOBJ){
+	  //printf("reassign\n");
+	  assign(left,right->value.devObj->outputs[0]); //assign the first output of right 
         } else { //error
 	  left->print();
 	  right->print();
@@ -1291,7 +1505,8 @@ string Parser::readNumber() {
 string Parser::readChar() {
   size_t i=textIndex;
   textIndex++;
-  return text.substr(i,1);
+  string r=text.substr(i,1);
+  return r;
 }
 
 void Parser::readComment(char first) {

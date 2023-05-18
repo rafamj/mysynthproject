@@ -17,14 +17,42 @@ class Token {
   public:
   Type type;
   string name;
-  Token(Type ty, string n) {type=ty;name=n;};
+  Token(Type ty, string n):type(ty),name(n){};
   bool is(char c) {return name[0]==c;}
   bool is(Type ty) {return type==ty;}
   void print();
 };
 
+class Printer {
+  int writeCode; //0 no 1 normal 2 inside user def device
+  string defStr,connectStr,cycleStr,initStr;
+  string soundOut,soundIn,midi;
+  void print(string s) {printf(s.c_str());}
+  string printDimensions(Symbol *s);
+  public:
+  string getDefStr(){return defStr;}
+  string getInitStr(){return initStr;}
+  string getConnectStr(){return connectStr;}
+  void setWriteCode(int wrc){writeCode=wrc;}
+  int getWriteCode() {return writeCode;}
+  void printConnect(bool isMidi, string left, int ln, string right, int rn);
+  void printConnect(string s){if(writeCode) {connectStr+= "  " + s;}}
+  void printCycle(string s){if(writeCode) {cycleStr+=s;}}       
+  void printDef(string s){if(writeCode) {defStr+=s;}}
+  void printDef(string typeName, string name, vector<int> dimensions, vector<Symbol *> init);
+  void printProgram();
+};
+
+  struct Name {
+    string name;
+    int n;
+    Name(string na):name(na),n(0){}
+  };
+
 class Parser{
   bool saveText; //if true the text of a def is saved
+  Printer pr;
+  vector <Name *> nameTable;
   string text;
   string line;
   size_t textIndex;
@@ -36,6 +64,7 @@ class Parser{
   void initDevices();
   void printError(const char *error);
   void printError(const char *error, const char *more);
+  string generateName(string s);
   void expect(char c);
   Token *expect(Type t);
   void jumpBlanks();
@@ -89,10 +118,11 @@ class Parser{
   Parser();
   Parser(ifstream fs);
   void initFile(string filename);
-  void parse(string end);
+  void parse(string end, int writeCode);
   void getDevices(DeviceSet *d);
   void buildDeviceSet(string root,bool defining);
   void buildDeviceSet(DevObj *devObj,bool defining);
+  void printProgram() {pr.printProgram();}
   ~Parser();
 };
 

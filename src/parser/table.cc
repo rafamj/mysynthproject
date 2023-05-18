@@ -10,6 +10,40 @@ void DevDef::print() {
 }
 
 
+string Symbol::symbol2string(){
+  if(type==INTEGER) {
+     return to_string(value.integer);
+  } else if(type==REAL) {
+     return to_string(value.real);
+  } else if(type==STRING){
+    return string(1,'"') + *value.str +  string(1,'"');
+  } else if(type==IDENTIFIER){
+    return  *value.ident;
+  } else if(type==ARRAY){
+    string res="{";
+    for(size_t i=0;i<value.array->alm.size();i++) {
+      if(i>0) res +=string(1,',');
+      res += value.array->alm[i]->symbol2string();
+    }
+    return res + string(1,'}');
+  }
+  return "";
+}
+
+void Symbol::asControl() {
+  if(SAMPLE_T==0) {
+    if(type==INTEGER) {
+      type=REAL;
+      value.real=value.integer;
+   }
+ } else if(type==REAL) {
+   type=INTEGER;
+   value.integer=MAX_VALUE*value.real;
+ } else if(type==INTEGER) {
+   value.integer=MAX_VALUE*value.integer;
+ }
+}
+
 void Symbol::print(){
   printf("symbol  %s ",name.c_str());
   if(type==INTEGER) {

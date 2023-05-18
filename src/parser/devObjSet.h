@@ -1,7 +1,7 @@
 // devObjSet.h
 #include "table.h"
 
-#define MAX_DEVICE 200
+#define MAX_DEVICE 1000 
 
 class DevObjSet {
   DevObj *alm[MAX_DEVICE];

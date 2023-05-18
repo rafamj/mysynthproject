@@ -55,7 +55,7 @@ class Field {
   public:
   int n; //number of field
   int io; //0 input 1 output
-  Symbol *f; //the type of field (array or real)
+  Symbol *f; //the type of field (array or real or integer)
   DevObj *devObj;
   Field(int nn, int nio, Symbol *fi, DevObj *dev){n=nn;io=nio;f=fi;devObj=dev;};
 };
@@ -75,7 +75,7 @@ class Array;
 union Value {
   string *ident;
   int    integer;
-  sample real;
+  double real;
   DevObj *devObj;
   DevDef *devDef;
   Field *field;
@@ -96,7 +96,7 @@ class Symbol {
     Symbol(Type t,string n, string *v) {type=t; name=n;value.str=v;} //used for strings
     Symbol(string n, string *v) {type=IDENTIFIER; name=n;value.ident=v;}
     Symbol(string n, int i) {type=INTEGER; name=n;value.integer=i;}
-    Symbol(string n, sample r) {type=REAL; name=n;value.real=r;}
+    Symbol(string n, double r) {type=REAL; name=n;value.real=r;}
     Symbol(string n, DevDef *d) {type=DEVDEF; name=n;value.devDef=d;}
     Symbol(string n, DevObj *d) {type=DEVOBJ; name=n;value.devObj=d;}
     Symbol(string n, Field *f) {type=FIELD; name=n;value.field=f;}
@@ -106,7 +106,10 @@ class Symbol {
     Symbol(Symbol *s) {type=s->type;name=s->name;value=s->value;}
     Type getType() { return type;}
     bool is(Type t) { return type==t;}
+    bool isNumber() { return type==REAL || type==INTEGER;}
     bool isInputOrField() { return type==INPUT || type==FIELD;}
+    string symbol2string();
+    void asControl();
     void print();
 };
 
