@@ -18,4 +18,4 @@ This also serves as an Arduino library for the SAMD21 board with the PCM5102A DA
     
     ./modular <program> to exec the program
     ./modular -c <program> to list the SAMD21 synth.ino program
-    ./modular -c <program> to list the synth.cc program
+    ./modular -p <program> to list the synth.cc program
