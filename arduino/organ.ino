@@ -5,6 +5,7 @@
 #define OCTAVES 8
 #define MAX_VALUE 2147483647
 #define SAMPLING_FREQ 16000
+#define BRIGHTNESS_CONTROL 10
 
 /*
 Organ for SAMD21 with PCM5102A DAC
@@ -24,9 +25,9 @@ Organ for SAMD21 with PCM5102A DAC
     MIDI IN  D11
 */
 
-typedef int sample;
 
-sample out1,out2;
+int out1,out2;
+int brightness;
 
 Uart Serial2(&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
 
@@ -37,7 +38,7 @@ struct osc_t {
   int delta; 
   int phase;
   int freq;
-  sample out[OCTAVES];
+  int out[OCTAVES];
   bool on[OCTAVES];
 };
 //frequency * 1000
@@ -56,6 +57,7 @@ void openMidi(){
   pinPeripheral(10, PIO_SERCOM);
   pinPeripheral(11, PIO_SERCOM);
 }
+
 void readMidi(){
    while (Serial2.available()>2) {
       byte commandByte = Serial2.read();//read first byte
@@ -87,8 +89,11 @@ void readMidi(){
         Serial2.read();
         continue;
       } else if (commandByte == 0xb0){ //controller change
-        Serial2.read();
-        Serial2.read();
+        byte byte1=Serial2.read();
+        byte byte2=Serial2.read();
+	if(byte1==BRIGHTNESS_CONTROL) {
+	  brightness=byte2;
+	}
       } else if (commandByte == 0xe0){ //pitch bend
         Serial2.read();
         Serial2.read();
@@ -109,7 +114,7 @@ void openPCM(){
 
 void writePCM(){
     int wr=I2S.availableForWrite();
-    short int buffer[2048]; //every 32 bit int have 2 16 bit samples (left and right)
+    short int buffer[2048]; 
     int index=0;
     while(index*2<wr) {
       generateSound();
@@ -159,8 +164,11 @@ void generateSound() {
     }
     for(int i=0; i<OCTAVES; i++) {
       if(osc[note].on[i]) {
-        out1 += osc[note].out[i]>>4;
-        out2 += osc[note].out[i]>>4;
+        int out=osc[note].out[i]>>1;
+        if(i>0) out += brightness * (osc[note].out[i-1]>>8);
+        int nt=i*12+note;
+        out1 += (out>>10) * (95 -nt);
+        out2 += (out>>10) * nt;
       }
     }
   }
@@ -169,6 +177,7 @@ void generateSound() {
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN,HIGH);
+  brightness=0;
   openMidi();
   openPCM();
   initOsc();
